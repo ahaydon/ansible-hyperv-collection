@@ -1,0 +1,12 @@
+---
+vm_group: "{{ lookup('ansible.builtin.env', 'PWD') | basename }}"
+vm_name: "{{ vm_group }}-{{ inventory_hostname }}"
+vm_memory_startup_bytes: 2048MB
+vm_switch_name: WSL (Hyper-V firewall)
+vm_generation: 2
+vm_processor_count: 2
+
+vm_vhd_path: 'C:\ProgramData\Microsoft\Windows\Virtual Hard Disks\{{ vm_name }}.vhdx'
+vm_vhd_size_bytes: 40GB
+
+vm_headless: true

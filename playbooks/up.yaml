@@ -1,0 +1,31 @@
+- name: Create HyperV VMs
+  hosts: hyperv_vms
+  serial: 1
+  vars:
+    force: False
+    headless: True
+
+  tags: create
+
+  pre_tasks:
+    - name: Check that the Ansible version is at least 2.12
+      ansible.builtin.assert:
+        that:
+          - ansible_version.major >= 2
+          - ansible_version.minor >= 12
+        msg: ansible-hyperv requires Ansible 2.12 or newer to run, please upgrade or checkout devel before running
+
+    - name: Check that pypsrp is installed
+      ansible.builtin.command: python -c "import pypsrp"
+      changed_when: false
+
+  roles:
+    - ahaydon.hyperv.vm
+
+- name: Run provisioner playbooks
+  ansible.builtin.import_playbook: "{{
+    provisioner | default(
+      lookup('ansible.builtin.fileglob', lookup('ansible.builtin.env', 'PWD') + '/provision.yaml')
+      | default('no-provision.yaml')
+    ) }}"
+  tags: provision

@@ -1,0 +1,9 @@
+- name: Create HyperV VMs
+  hosts: hyperv_vms
+  serial: 1
+
+  tasks:
+    - name: Stop VM
+      ansible.builtin.include_role:
+        name: ahaydon.hyperv.vm
+        tasks_from: stop.yaml

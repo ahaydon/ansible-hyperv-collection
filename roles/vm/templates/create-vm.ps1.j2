@@ -1,0 +1,134 @@
+[CmdletBinding()]
+param (
+    [switch]$Stop,
+    [switch]$Destroy
+)
+
+$ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
+
+$changed = $false
+$vmName = {{ vm_name | ansible.windows.quote(shell='powershell') }}
+$password = ConvertTo-SecureString -AsPlainText -Force -String {{ ansible_password | ansible.windows.quote(shell='powershell') }}
+$cred = [PSCredential]::new({{ ansible_user | ansible.windows.quote(shell='powershell') }}, $password)
+$vmGroup = {{ vm_group | ansible.windows.quote(shell='powershell') }}
+$ipAddr = {{ hyperv_ip | ansible.windows.quote(shell='powershell') }}
+
+$vm = Get-VM -Name $vmName -ErrorAction SilentlyContinue
+if ($Stop.IsPresent) {
+    if ($vm.State -ne 'Off') {
+        $changed = $true
+        Stop-VM -Name $vmName -WarningAction SilentlyContinue
+    }
+    @{changed = $changed} | ConvertTo-Json -Compress
+    Exit 0
+}
+if ($Destroy.IsPresent) {
+    if ($vm) {
+        $changed = $true
+        Stop-VM -Name $vmName -TurnOff -Force -WarningAction SilentlyContinue
+        Remove-VM -Name $vmName -Force
+    }
+    @{changed = $changed} | ConvertTo-Json -Compress
+    Exit 0
+}
+
+if (-not $vm) {
+    $changed = $true
+
+    $vhdPath = {{ vm_vhd_path | ansible.windows.quote(shell='powershell') }}
+    if (Test-Path -LiteralPath $vhdPath) {
+        Remove-Item -LiteralPath $vhdPath -Force
+    }
+
+    $vhdParams = @{
+        Path = $vhdPath
+        ParentPath = {{ vm_vhd_parent_path | ansible.windows.quote(shell='powershell') }}
+        SizeBytes = {{ vm_vhd_size_bytes }}
+        Differencing = $true
+    }
+    $vmParams = @{
+        Name = $vmName
+        MemoryStartupBytes = {{ vm_memory_startup_bytes }}
+        SwitchName = {{ vm_switch_name | ansible.windows.quote(shell='powershell') }}
+        VHDPath = $vhdPath
+        Generation = {{ vm_generation }}
+        Force = $true
+    }
+    $vmSettings = @{
+        AutomaticCheckpointsEnabled = $false
+        AutomaticStopAction = 'Shutdown'
+        CheckpointType = 'Disabled'
+        ProcessorCount = {{ vm_processor_count }}
+    }
+    $vhdx = New-VHD @vhdParams
+    $vm = New-VM @vmParams
+    $vm | Set-VM @vmSettings
+    $vm | Set-VMFirmware -BootOrder $vm.HardDrives[0]
+}
+if ($vm.State -ne 'Running') {
+    $changed = $true
+    $vm | Start-VM
+}
+
+if ($vmGroup -notin $vm.Groups.Name) {
+    if (-Not (Get-VMGroup -Name $vmGroup)) {
+        $null = New-VMGroup -Name $vmGroup -GroupType VMCollectionType
+    }
+    $null = Add-VMGroupMember -Name $vmGroup -VM $vm
+}
+
+if (-not ${{ vm_headless }}) {
+    vmconnect localhost $vmName
+}
+
+while ($true) {
+    # Wait until the VM is online and agent is running
+    while ((Get-VMIntegrationService -VMName $vmName -Name Heartbeat).PrimaryStatusDescription -ne 'OK') {
+        Start-Sleep -Seconds 5
+    }
+
+    # Check that the host is online
+    try {
+        $null = Invoke-Command -VMName $vmName -Credential $cred -ScriptBlock {
+            "hello"
+        }
+    }
+    catch {
+        continue
+    }
+
+    break
+}
+
+if ($ipAddr -notin $vm.NetworkAdapaters.IPAddresses) {
+    Invoke-Command -VMName $vmName -Credential $cred -ScriptBlock {
+        Write-Verbose -Message "Setting IP address to $ipAddr"
+
+        $ipAddr = $using:ipAddr
+        $gwAddr = {{ hyperv_gateway | ansible.windows.quote(shell='powershell') }}
+        $nsAddr = {{ hyperv_nameserver | first | ansible.windows.quote(shell='powershell') }}
+
+        $ipParams = @{
+            IPAddress = $ipAddr
+            PrefixLength = {{ hyperv_ip_prefix }}
+            DefaultGateway = $gwAddr
+        }
+        Get-NetAdapter | ForEach-Object {
+            $ips = $_ | Get-NetIPAddress
+            $ips | Where-Object {$_.IPAddress -ne $ipAddr} | Remove-NetIPAddress -Confirm:$false
+            if ($ipAddr -notin $ips.IPAddress) {
+                $changed = $true
+                Get-NetRoute -NextHop $gwAddr -ErrorAction Ignore | Remove-NetRoute -Confirm:$false
+                $null = $_ | New-NetIPAddress @ipParams
+            }
+
+            $ns = $_ | Get-DnsClientServerAddress
+            if ($nsAddr -notin $ns.ServerAddresses) {
+                $null = $_ | Set-DnsClientServerAddress -ServerAddresses $nsAddr
+            }
+        }
+    }
+}
+
+@{changed = $changed} | ConvertTo-Json -Compress

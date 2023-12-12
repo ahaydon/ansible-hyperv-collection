@@ -1,0 +1,8 @@
+---
+- hosts: all
+  gather_facts: no
+
+  tasks:
+    - name: No provisioner
+      debug:
+        msg: "No provisioners defined"

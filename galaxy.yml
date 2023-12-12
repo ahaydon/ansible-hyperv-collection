@@ -1,0 +1,17 @@
+namespace: ahaydon
+name: hyperv
+version: 0.1.0
+readme: README.md
+authors:
+  - Adam Haydon (https://github.com/ahaydon)
+description: Collection of roles for managing Hyper-V virtual machines
+license:
+  - MIT
+tags:
+  - windows
+  - hyperv
+repository: http://github.com/ahaydon/ansible-hyperv-collection
+documentation: http://github.com/ahaydon/ansible-hyperv-collection/wiki
+homepage: http://github.com/ahaydon/ansible-hyperv-collection
+issues: http://github.com/ahaydon/ansible-hyperv-collection/issues
+build_ignore: []
