@@ -2,8 +2,8 @@
   hosts: hyperv_vms
   serial: 1
   vars:
-    force: False
-    headless: True
+    force: false
+    headless: true
 
   tags: create
 
@@ -22,10 +22,12 @@
   roles:
     - ahaydon.hyperv.vm
 
-- name: Run provisioner playbooks
-  ansible.builtin.import_playbook: "{{
-    provisioner | default(
-      lookup('ansible.builtin.fileglob', lookup('ansible.builtin.env', 'PWD') + '/provision.yaml')
-      | default('no-provision.yaml')
-    ) }}"
+- name: Run provisioner playbook
+  vars:
+    playbook_search:
+      - "{{ lookup('ansible.builtin.env', 'PWD') }}/provision.yaml"
+      - no-provision.yaml
+    provision_playbook: "{{ provisioner
+      | default(lookup('ansible.builtin.first_found', playbook_search)) }}"
+  ansible.builtin.import_playbook: "{{ provision_playbook }}"
   tags: provision
