@@ -1,6 +1,7 @@
 - name: Create environment
   hosts: all
   connection: local
+  gather_facts: no
   serial: 1
   vars:
     force: false
@@ -9,6 +10,10 @@
   tags: create
 
   pre_tasks:
+    - name: Skip play when host already provisioned
+      ansible.builtin.meta: end_play
+      when: ansible_host is defined
+
     - name: Check that the Ansible version is at least 2.12
       ansible.builtin.assert:
         that:
@@ -19,6 +24,9 @@
     - name: Check that pypsrp is installed
       ansible.builtin.command: python -c "import pypsrp"
       changed_when: false
+
+    - name: Gather facts
+      ansible.builtin.setup:
 
   roles:
     - ahaydon.hyperv.vm
