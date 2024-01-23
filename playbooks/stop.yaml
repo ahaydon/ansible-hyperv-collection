@@ -1,5 +1,6 @@
 - name: Create HyperV VMs
-  hosts: hyperv_vms
+  hosts: all
+  connection: local
   serial: 1
 
   tasks:

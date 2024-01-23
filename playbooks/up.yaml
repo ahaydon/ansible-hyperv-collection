@@ -1,5 +1,6 @@
-- name: Create HyperV VMs
-  hosts: hyperv_vms
+- name: Create environment
+  hosts: all
+  connection: local
   serial: 1
   vars:
     force: false

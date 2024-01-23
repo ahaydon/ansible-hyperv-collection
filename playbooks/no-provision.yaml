@@ -1,8 +1,9 @@
 ---
-- hosts: all
+- name: Provision
+  hosts: all
   gather_facts: no
 
   tasks:
     - name: No provisioner
-      debug:
+      ansible.builtin.debug:
         msg: "No provisioners defined"
