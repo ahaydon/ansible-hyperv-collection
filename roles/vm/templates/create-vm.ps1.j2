@@ -11,7 +11,7 @@ $changed = $false
 $vmName = {{ vm_name | ansible.windows.quote(shell='powershell') }}
 $password = ConvertTo-SecureString -AsPlainText -Force -String {{ ansible_password | ansible.windows.quote(shell='powershell') }}
 $cred = [PSCredential]::new({{ ansible_user | ansible.windows.quote(shell='powershell') }}, $password)
-$vmGroup = {{ vm_group | ansible.windows.quote(shell='powershell') }}
+$vmGroup = @({{ group_names | map('replace', '-', '_') | map('ansible.windows.quote', shell='powershell') | join(',') }})
 $ipAddr = {{ hyperv_ip | ansible.windows.quote(shell='powershell') }}
 
 $vm = Get-VM -Name $vmName -ErrorAction SilentlyContinue
@@ -71,11 +71,13 @@ if ($vm.State -ne 'Running') {
     $vm | Start-VM
 }
 
-if ($vmGroup -notin $vm.Groups.Name) {
-    if (-Not (Get-VMGroup -Name $vmGroup)) {
-        $null = New-VMGroup -Name $vmGroup -GroupType VMCollectionType
+foreach ($groupName in $vmGroup) {
+    if ($groupName -notin $vm.Groups.Name) {
+        if (-Not (Get-VMGroup -Name $groupName)) {
+            $null = New-VMGroup -Name $groupName -GroupType VMCollectionType
+        }
+        $null = Add-VMGroupMember -Name $groupName -VM $vm
     }
-    $null = Add-VMGroupMember -Name $vmGroup -VM $vm
 }
 
 if (-not ${{ vm_headless }}) {

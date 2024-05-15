@@ -84,7 +84,7 @@ class InventoryModule(BaseInventoryPlugin):
 
         try:
             with os.fdopen(fd, "w") as tmp:
-                tmp.write(ps_script.replace('{0}', os.path.basename(os.getcwd())))
+                tmp.write(ps_script.replace('{0}', os.path.basename(os.getcwd()).replace('-', '_')))
             display.vv('Making script executable')
             os.chmod(tmppath, 0o755)
         except Exception as e:

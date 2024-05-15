@@ -11,6 +11,11 @@
     hyperv_gateway: "{{ ansible_default_ipv4.gateway }}"
     hyperv_nameserver: "{{ ansible_dns.nameservers }}"
 
+- name: Add project group
+  ansible.builtin.add_host:
+    name: "{{ ansible_host }}"
+    groups: "{{ vm_group | replace('-', '_') }}"
+
 - name: Get Windows TMP path
   ansible.builtin.raw: 'wslpath -a -u `powershell.exe -c "\\\$env:TMP"`'
   changed_when: false
