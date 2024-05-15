@@ -178,6 +178,9 @@ class InventoryModule(BaseInventoryPlugin):
             for hostname in data['hosts']:
                 self._hosts.add(hostname)
                 self.inventory.add_host(hostname, group)
+                self.inventory.set_variable(hostname, 'ansible_connection', 'psrp')
+                self.inventory.set_variable(hostname, 'ansible_psrp_auth', 'basic')
+                self.inventory.set_variable(hostname, 'ansible_psrp_cert_validation', 'ignore')
 
         if 'vars' in data:
             if not isinstance(data['vars'], dict):
