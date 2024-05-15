@@ -6,7 +6,8 @@ vm_switch_name: WSL (Hyper-V firewall)
 vm_generation: 2
 vm_processor_count: 2
 
-vm_vhd_path: 'C:\ProgramData\Microsoft\Windows\Virtual Hard Disks\{{ vm_name }}.vhdx'
+vm_vhd_dir: 'C:\ProgramData\Microsoft\Windows\Virtual Hard Disks'
+vm_vhd_path: '{{ vm_vhd_dir }}\{{ vm_name }}.vhdx'
 vm_vhd_size_bytes: 40GB
 
 vm_headless: true
