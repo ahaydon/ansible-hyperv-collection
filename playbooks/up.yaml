@@ -1,5 +1,5 @@
 - name: Create environment
-  hosts: all
+  hosts: hyperv_vm
   connection: local
   gather_facts: no
   serial: 1

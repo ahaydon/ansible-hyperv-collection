@@ -1,6 +1,7 @@
-- name: Create HyperV VMs
-  hosts: all
+- name: Destroy environment
+  hosts: hyperv_vm
   connection: local
+  gather_facts: no
   serial: 1
 
   tasks:
