@@ -79,8 +79,27 @@ class InventoryModule(BaseInventoryPlugin):
     def parse(self, inventory, loader, path, cache=True):
         super(InventoryModule, self).parse(inventory, loader, path, cache)
 
+        try:
+            display.vv('Looking up temp path')
+            sp = subprocess.Popen(["powershell.exe", "-NoProfile", "-NoLogo", "-ExecutionPolicy", "Unrestricted", "$env:TEMP"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        except OSError as e:
+            raise AnsibleParserError("problem looking up temp var (%s)" % (to_native(e)))
+        (stdout, stderr) = sp.communicate()
+        display.vv('TEMP:')
+        tmpvar = to_text(stdout, errors="strict").rstrip("\r\n")
+        display.vvv(str(bytes(tmpvar, "utf-8")))
+
+        try:
+            display.vv('Resolving TEMP path')
+            sp = subprocess.Popen(["wslpath", tmpvar], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="UTF8")
+        except OSError as e:
+            raise AnsibleParserError("problem resolving temp path (%s)" % (to_native(e)))
+        (stdout, stderr) = sp.communicate()
+        tmpdir = to_text(stdout, errors="strict").rstrip("\n")
+        display.vvv(str(bytes(tmpdir, "utf-8")))
+
         display.vv('Creating temp script file')
-        fd, tmppath = tempfile.mkstemp(dir="/mnt/c/tmp", suffix=".ps1")
+        fd, tmppath = tempfile.mkstemp(dir=tmpdir, suffix=".ps1")
 
         try:
             with os.fdopen(fd, "w") as tmp:
@@ -97,7 +116,7 @@ class InventoryModule(BaseInventoryPlugin):
                 display.vv('Resolving WSL path')
                 sp = subprocess.Popen(["wslpath", "-w", cmd], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="UTF8")
             except OSError as e:
-                raise AnsibleParserError("problem running %s (%s)" % (' '.join(cmd), to_native(e)))
+                raise AnsibleParserError("problem resolving script path %s (%s)" % (' '.join(cmd), to_native(e)))
             (stdout, stderr) = sp.communicate()
             cmd = str(stdout)
 
