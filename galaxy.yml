@@ -1,6 +1,6 @@
 namespace: ahaydon
 name: hyperv
-version: 0.1.0
+version: 0.2.0
 readme: README.md
 authors:
   - Adam Haydon (https://github.com/ahaydon)

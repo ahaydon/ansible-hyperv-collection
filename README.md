@@ -1,3 +1,3 @@
 # Ansible Collection - Hyper-V
 
-A collection of Ansible roles for managing Hyper-V virtual machines.
+A collection of Ansible roles and modules for managing Hyper-V virtual machines.
