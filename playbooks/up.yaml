@@ -1,32 +1,8 @@
 - name: Create environment
   hosts: hyperv_vm
-  connection: local
-  gather_facts: no
   serial: 1
-  vars:
-    force: false
-    headless: true
 
   tags: create
-
-  pre_tasks:
-    - name: Skip play when host already provisioned
-      ansible.builtin.meta: end_play
-      when: ansible_host is defined
-
-    - name: Check that the Ansible version is at least 2.12
-      ansible.builtin.assert:
-        that:
-          - ansible_version.major >= 2
-          - ansible_version.minor >= 12
-        msg: ansible-hyperv requires Ansible 2.12 or newer to run, please upgrade or checkout devel before running
-
-    - name: Check that pypsrp is installed
-      ansible.builtin.command: python -c "import pypsrp"
-      changed_when: false
-
-    - name: Gather facts
-      ansible.builtin.setup:
 
   roles:
     - ahaydon.hyperv.vm
