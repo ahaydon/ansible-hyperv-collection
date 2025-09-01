@@ -10,4 +10,18 @@ vm_vhd_dir: 'C:\ProgramData\Microsoft\Windows\Virtual Hard Disks'
 vm_vhd_path: '{{ vm_vhd_dir }}\{{ vm_name }}.vhdx'
 vm_vhd_size_bytes: 40GB
 
+vm_vhd_parent_dir: '{{ ansible_env.LOCALAPPDATA }}\packer-windoze\images'
+vm_vhd_parent_path: '{{ vm_vhd_parent_dir }}\{{ image }}.vhdx'
+
 vm_headless: true
+
+# host_prefix: "{{ ansible_default_ipv4.address }}/{{ ansible_default_ipv4.prefix }}"
+wsl_ip: "{{ hostvars['localhost']['ansible_default_ipv4'] }}"
+host_prefix: "{{ wsl_ip['address'] }}/{{ wsl_ip['prefix'] }}"
+hyperv_ip: >-
+  {{
+      host_prefix | ansible.utils.next_nth_usable(1 + groups["all"].index(inventory_hostname))
+  }}
+hyperv_ip_prefix: "{{ wsl_ip['prefix'] }}"
+hyperv_gateway: "{{ wsl_ip['gateway'] }}"
+hyperv_nameserver: "{{ hostvars['localhost']['ansible_dns']['nameservers'] | default(['8.8.8.8']) }}"

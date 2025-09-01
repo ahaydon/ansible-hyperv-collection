@@ -1,70 +1,59 @@
 ---
-- name: Get WSL IP settings
-  vars:
-    host_prefix: "{{ ansible_default_ipv4.address }}/{{ ansible_default_ipv4.prefix }}"
+- name: Get WSL guest facts
+  ansible.builtin.setup:
+  delegate_to: localhost
+  delegate_facts: true
+
+- name: Set VM IP settings facts
+  delegate_to: localhost
   ansible.builtin.set_fact:
-    hyperv_ip: >-
-      {{
-          host_prefix | ansible.utils.next_nth_usable(1 + groups["all"].index(inventory_hostname))
-      }}
-    hyperv_ip_prefix: "{{ ansible_default_ipv4.prefix }}"
-    hyperv_gateway: "{{ ansible_default_ipv4.gateway }}"
-    hyperv_nameserver: "{{ ansible_dns.nameservers }}"
-
-- name: Add project group
-  ansible.builtin.add_host:
-    name: "{{ ansible_host }}"
-    groups: "{{ vm_group | replace('-', '_') }}"
-
-- name: Get Windows TMP path
-  ansible.builtin.raw: 'wslpath -a -u `powershell.exe -c "\\\$env:TMP"`'
-  changed_when: false
-  register: win_tmp_path
-  when: output_dir is not defined
-
-- name: Set output directory
-  ansible.builtin.set_fact:
-    output_dir: '{{ win_tmp_path.stdout_lines.0 }}'
-  when: output_dir is not defined
-
-- name: Create HyperV VM directory
-  ansible.builtin.file:
-    path: "{{ output_dir }}/{{ inventory_hostname }}/hyperv"
-    state: directory
-    mode: "0700"
-
-- name: Template build script
-  ansible.builtin.template:
-    src: create-vm.ps1.j2
-    dest: "{{ output_dir }}/{{ inventory_hostname }}/hyperv/create-vm.ps1"
-    mode: "0600"
-
-- name: Get Windows path for the Hyper-V script
-  ansible.builtin.command: wslpath -w {{ (output_dir ~ '/' ~ inventory_hostname ~ '/hyperv/create-vm.ps1') | quote }}
-  changed_when: false
-  register: hyperv_win_path
+    hyperv_ip: "{{ hyperv_ip }}"
+    hyperv_ip_prefix: "{{ hyperv_ip_prefix }}"
+    hyperv_gateway: "{{ hyperv_gateway }}"
+    hyperv_nameserver: "{{ hyperv_nameserver }}"
 
 - name: Create Hyper-V VM
-  ansible.builtin.command: >-
-    powershell.exe -NoProfile -NoLogo -ExecutionPolicy Unrestricted
-    -File {{ hyperv_win_path.stdout | trim | quote }}
-  register: hyperv_create_info
-  changed_when: (hyperv_create_info.stdout | trim | from_json).changed
-  until: hyperv_create_info.stdout is defined
-  retries: 2
-  delay: 10
+  ahaydon.hyperv.hyperv_vm:
+    name: "{{ vm_name }}"
+    vhd_path: "{{ vm_vhd_path }}"
+    vhd_parent_path: "{{ vm_vhd_parent_path }}"
+    state: running
+    switch_name: "{{ vm_switch_name }}"
+    group_names:
+      - "{{ vm_group }}"
 
-- name: Override guest hostname and port
+- name: Set connection to VM
   ansible.builtin.set_fact:
-    ansible_host: '{{ hyperv_ip }}'
-    ansible_port: 5986
-    ansible_connection: psrp
-    ansible_psrp_auth: basic
-    ansible_psrp_cert_validation: ignore
+    ansible_vm_name: "{{ vm_name }}"
 
-- name: Wait for Windows host WinRM to come online
+- name: Wait for Windows guest to come online
   ansible.builtin.wait_for_connection:
     timeout: 120
+
+- name: Wait for WinRM to be running
+  ansible.windows.win_powershell:
+    script: |
+      $svc = Get-Service -Name WinRM
+      if ($svc.Status -ne 'Running') {
+        Throw "Not ready!"
+      }
+      $Ansible.Changed = $false
+  retries: 12
+  delay: 10
+
+- name: Update facts from virtual machine
+  ansible.builtin.setup:
+  retries: 12
+  delay: 10
+
+- name: Set IP address
+  ahaydon.windows.ipv4:
+    ip_address: "{{ hyperv_ip }}"
+    ip_prefix: "{{ hyperv_ip_prefix }}"
+    ip_gateway: "{{ hyperv_gateway }}"
+    ip_nameserver: "{{ hyperv_nameserver }}"
+  retries: 12
+  delay: 10
 
 - name: Set hostname
   ansible.windows.win_hostname:
