@@ -6,7 +6,7 @@ authors:
   - Adam Haydon (https://github.com/ahaydon)
 description: Collection of roles for managing Hyper-V virtual machines
 dependencies:
-  ahaydon.windows: ">=0.1.0"
+  git+https://github.com/ahaydon/ansible-windows-collection.git: master
 license:
   - MIT
 tags:
