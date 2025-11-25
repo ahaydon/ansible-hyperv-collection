@@ -2,4 +2,5 @@
 - name: Destroy Hyper-V VM
   ahaydon.hyperv.hyperv_vm:
     name: "{{ vm_name }}"
+    vhd_path: "{{ vm_vhd_path }}"
     state: absent
