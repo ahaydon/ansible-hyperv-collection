@@ -1,6 +1,7 @@
 - name: Create environment
   hosts: hyperv_vm
   serial: 1
+  gather_facts: no
 
   tags: create
 

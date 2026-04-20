@@ -41,8 +41,8 @@ options:
     choices:
       - present
       - absent
-	  - running
-	  - stopped
+      - running
+      - stopped
       - poweroff
     default: present
   cpu:
@@ -60,6 +60,15 @@ options:
       - Specifies the generation of the VM
     required: false
     default: 2
+  secureboot_template:
+    description:
+      - Specifies the secure boot template to use
+    required: false
+    choices:
+      - MicrosoftWindows
+      - MicrosoftUEFICertificateAuthority
+      - OpenSourceShieldedVM
+    default: MicrosoftWindows
   network_switch:
     description:
       - Specifies a network adapter for the VM

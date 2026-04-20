@@ -15,6 +15,7 @@ $vmName = Get-AnsibleParam -obj $params -name name -failifempty $true -emptyattr
 $cpu = Get-AnsibleParam -obj $params -name cpu -default '1'
 $memory = Get-AnsibleParam -obj $params -name memory -default 2048MB
 $generation = Get-AnsibleParam -obj $params -name generation -default 2
+$secureBootTemplate = Get-AnsibleParam -obj $params -name secureboot_template -default "MicrosoftWindows"
 $switchName = Get-AnsibleParam -obj $params -name switch_name -default $null
 $vmGroups = Get-AnsibleParam -obj $params -name group_names
 $state = Get-AnsibleParam -obj $params -name state -default "present"
@@ -61,7 +62,12 @@ function CreateVM {
     New-VHD @vhdParams | Out-Null
     $vm = New-VM @vmParams
     $vm | Set-VM @vmSettings -PassThru
-    $vm | Set-VMFirmware -BootOrder $vm.HardDrives[0] | Out-Null
+    $vmFirmware = @{
+        BootOrder = $vm.HardDrives[0]
+        EnableSecureBoot = if ($secureBootTemplate) { "On" } else { "Off" }
+        SecureBootTemplate = $secureBootTemplate
+    }
+    $vm | Set-VMFirmware @vmFirmware | Out-Null
 }
 
 function StartVM([Parameter(ValueFromPipeline=$true)]$vm) {
@@ -130,5 +136,7 @@ switch ($state) {
     "poweroff" { PoweroffVM }
     "absent" { $vm = PoweroffVM; DestroyVM $vm }
 }
+
+$result.ip_address = $vm.NetworkAdapters.IPAddresses | Select-Object -First 1
 
 Exit-Json $result

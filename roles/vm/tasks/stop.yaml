@@ -1,5 +1,7 @@
 ---
 - name: Stop Hyper-V VM
+  vars:
+    ansible_connection: ahaydon.windows.wsl2
   ahaydon.hyperv.hyperv_vm:
     name: "{{ vm_name }}"
     state: stopped

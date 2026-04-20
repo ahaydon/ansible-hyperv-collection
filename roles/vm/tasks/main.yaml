@@ -12,34 +12,34 @@
     hyperv_gateway: "{{ hyperv_gateway }}"
     hyperv_nameserver: "{{ hyperv_nameserver }}"
 
+- name: Get WSL host facts
+  ansible.builtin.gather_facts:
+  vars:
+    ansible_connection: ahaydon.windows.wsl2
+
 - name: Create Hyper-V VM
+  vars:
+    ansible_connection: ahaydon.windows.wsl2
   ahaydon.hyperv.hyperv_vm:
     name: "{{ vm_name }}"
     vhd_path: "{{ vm_vhd_path }}"
     vhd_parent_path: "{{ vm_vhd_parent_path }}"
+    secureboot_template: "{{ vm_secureboot_template | default(omit) }}"
     state: running
     switch_name: "{{ vm_switch_name }}"
     group_names:
       - "{{ vm_group }}"
+  register: vm
 
 - name: Set connection to VM
   ansible.builtin.set_fact:
     ansible_vm_name: "{{ vm_name }}"
+    ansible_host: "{{ vm.ip_address }}"
+    ansible_host_key_checking: False
 
-- name: Wait for Windows guest to come online
+- name: Wait for guest OS to come online
   ansible.builtin.wait_for_connection:
     timeout: 120
-
-- name: Wait for WinRM to be running
-  ansible.windows.win_powershell:
-    script: |
-      $svc = Get-Service -Name WinRM
-      if ($svc.Status -ne 'Running') {
-        Throw "Not ready!"
-      }
-      $Ansible.Changed = $false
-  retries: 12
-  delay: 10
 
 - name: Update facts from virtual machine
   ansible.builtin.setup:
@@ -54,12 +54,21 @@
     ip_nameserver: "{{ hyperv_nameserver }}"
   retries: 12
   delay: 10
+  when: vm.ip_address.startswith("169.254")
 
 - name: Set hostname
   ansible.windows.win_hostname:
     name: "{{ inventory_hostname }}"
   register: rename
+  retries: 12
+  delay: 10
+  when: ansible_facts["os_family"] == "Windows"
+
+- name: Set hostname
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+  when: ansible_facts["os_family"] != "Windows"
 
 - name: Reboot
   ansible.windows.win_reboot:
-  when: rename.reboot_required
+  when: rename.reboot_required | default(false)
